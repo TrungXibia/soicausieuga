@@ -57,6 +57,7 @@ with tab1:
 # ------------------- TAB 2: Cầu Tự Động -------------------
 with tab2:
     st.markdown('<div class="sub-header">Quét Cầu PASCAL / POSPAIR</div>', unsafe_allow_html=True)
+    
     # Explanation expander
     with st.expander("📖 Giải thích phương pháp & Backtest"):
         st.markdown("""
@@ -73,6 +74,7 @@ with tab2:
         - Là tỷ lệ số lần cầu này dự đoán đúng trong quá khứ (theo độ sâu quét).
         - Backtest được thực hiện tự động khi quét, hiển thị qua cột Win Rate.
         """)
+    
     # Day & region selection for scanning
     day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab2")
     day_stations = utils.DAY_STATIONS.get(day_selected, [])
@@ -80,16 +82,38 @@ with tab2:
     selected_region = st.selectbox("Chọn miền", region_options, index=0, key="region_tab2")
     station_options = [station for region, station in day_stations if region == selected_region]
     s_cau = st.selectbox("Đài soi cầu", station_options, index=0)
-    method = st.selectbox("Thuật toán", ["POSPAIR", "PASCAL"])
-    min_str = st.number_input("Streak (chuỗi) tối thiểu", value=3, min_value=1)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        method = st.selectbox("Thuật toán", ["POSPAIR", "PASCAL"])
+    with col2:
+        min_str = st.number_input("Streak (chuỗi) tối thiểu", value=3, min_value=1)
+    
+    # Position selection for POSPAIR
+    scan_mode = st.radio("Chế độ quét", ["Tự động (Quét tất cả vị trí)", "Thủ công (Chọn vị trí cụ thể)"], horizontal=True)
+    
+    selected_positions = None
+    if scan_mode == "Thủ công (Chọn vị trí cụ thể)":
+        st.info("💡 Nhập các cặp vị trí cần quét. Ví dụ: 0-1, 2-5, 7-9 (vị trí bắt đầu từ 0)")
+        pos_input = st.text_input("Nhập các cặp vị trí (cách nhau bởi dấu phẩy)", "0-1, 0-2, 1-2")
+        if pos_input:
+            selected_positions = []
+            for pair in pos_input.split(","):
+                pair = pair.strip()
+                if "-" in pair:
+                    try:
+                        a, b = pair.split("-")
+                        selected_positions.append((int(a.strip()), int(b.strip())))
+                    except:
+                        pass
 
     if st.button("🚀 Quét Cầu Ngay"):
         u = utils.ALL_STATIONS[s_cau]["url"]
         with st.spinner(f"Đang chạy thuật toán {method} trên đài {s_cau}..."):
-            results = utils.scan_cau_dong(u, method=method, min_streak=min_str)
+            results = utils.scan_cau_dong(u, method=method, min_streak=min_str, position_pairs=selected_positions)
             if results:
                 df_res = pd.DataFrame(results)
-                st.success(f"Tìm thấy {len(results)} cầu!")
+                st.success(f"Tìm thấy {len(results)} cầu! (Sắp xếp theo Streak giảm dần)")
                 st.dataframe(df_res.style.applymap(lambda x: 'font-weight: bold; color: blue', subset=['Dự đoán']), use_container_width=True)
             else:
                 st.warning("Không tìm thấy cầu nào thỏa mãn điều kiện.")
