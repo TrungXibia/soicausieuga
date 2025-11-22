@@ -293,3 +293,73 @@ def get_bac_nho_next_day(url, target, limit=100):
         freq.append({"Số": num, "Số lần xuất hiện": count})
         
     return freq, log
+
+# ==== 6. LỊCH QUAY XỔ SỐ THEO NGÀY ====
+DAY_STATIONS = {
+    "Chủ nhật": [
+        ("Miền Bắc", "Thái Bình"),
+        ("Miền Nam", "Đà Lạt"),
+        ("Miền Nam", "Kiên Giang"),
+        ("Miền Nam", "Tiền Giang"),
+        ("Miền Trung", "Huế"),
+        ("Miền Trung", "Khánh Hòa"),
+        ("Miền Trung", "Kon Tum"),
+    ],
+    "Thứ 2": [
+        ("Miền Bắc", "Hà Nội"),
+        ("Miền Nam", "Cà Mau"),
+        ("Miền Nam", "Đồng Tháp"),
+        ("Miền Nam", "TP Hồ Chí Minh"),
+        ("Miền Trung", "Huế"),
+        ("Miền Trung", "Phú Yên"),
+    ],
+    "Thứ 3": [
+        ("Miền Bắc", "Quảng Ninh"),
+        ("Miền Nam", "Bạc Liêu"),
+        ("Miền Nam", "Bến Tre"),
+        ("Miền Nam", "Vũng Tàu"),
+        ("Miền Trung", "Đắk Lắk"),
+        ("Miền Trung", "Quảng Nam"),
+    ],
+    "Thứ 4": [
+        ("Miền Bắc", "Bắc Ninh"),
+        ("Miền Nam", "Cần Thơ"),
+        ("Miền Nam", "Đồng Nai"),
+        ("Miền Nam", "Sóc Trăng"),
+        ("Miền Trung", "Đà Nẵng"),
+        ("Miền Trung", "Khánh Hòa"),
+    ],
+    "Thứ 5": [
+        ("Miền Bắc", "Hà Nội"),
+        ("Miền Nam", "An Giang"),
+        ("Miền Nam", "Bình Thuận"),
+        ("Miền Nam", "Tây Ninh"),
+        ("Miền Trung", "Bình Định"),
+        ("Miền Trung", "Quảng Bình"),
+        ("Miền Trung", "Quảng Trị"),
+    ],
+    "Thứ 6": [
+        ("Miền Bắc", "Hải Phòng"),
+        ("Miền Nam", "Bình Dương"),
+        ("Miền Nam", "Trà Vinh"),
+        ("Miền Nam", "Vĩnh Long"),
+        ("Miền Trung", "Gia Lai"),
+        ("Miền Trung", "Ninh Thuận"),
+    ],
+    "Thứ 7": [
+        ("Miền Bắc", "Nam Định"),
+        ("Miền Nam", "Bình Phước"),
+        ("Miền Nam", "Hậu Giang"),
+        ("Miền Nam", "Long An"),
+        ("Miền Nam", "TP Hồ Chí Minh"),
+        ("Miền Trung", "Đà Nẵng"),
+        ("Miền Trung", "Đắk Nông"),
+        ("Miền Trung", "Quảng Ngãi"),
+    ],
+}
+
+def get_stations_by_day(day: str):
+    """Return list of (region, station) tuples for the given day name.
+    If the day is not found, returns an empty list.
+    """
+    return DAY_STATIONS.get(day, [])
