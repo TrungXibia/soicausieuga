@@ -1,3 +1,25 @@
+import streamlit as st
+import pandas as pd
+import utils
+from collections import Counter
+
+# Cấu hình trang (Full width)
+st.set_page_config(page_title="Siêu Gà 18+", layout="wide", page_icon="🐔")
+
+# CSS tùy chỉnh cho đẹp
+st.markdown("""
+    <style>
+    .main-header {font-size: 2.5rem; font-weight: 700; color: #FF4B4B;}
+    .sub-header {font-size: 1.5rem; font-weight: 600;}
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="main-header">🐔 Hệ thống Soi Cầu Siêu Gà 18+</div>', unsafe_allow_html=True)
+
+# Tạo Tabs
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 KQXS Chi Tiết", "🤖 Cầu Tự Động", "📈 Tần Suất", "🔗 Cặp Lô Đi Cùng", "🔮 Soi Khác"])
+
+# --- TAB 1: XEM KẾT QUẢ ---
 with tab1:
     col1, col2 = st.columns([1, 3])
     with col1:
