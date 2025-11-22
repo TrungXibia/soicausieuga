@@ -17,17 +17,17 @@ st.markdown("""
 st.markdown('<div class="main-header">🐔 Hệ thống Soi Cầu Siêu Gà 18+</div>', unsafe_allow_html=True)
 
 # Create tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 KQXS Chi Tiết",
     "🤖 Cầu Tự Động",
     "📈 Tần Suất",
     "🔗 Cặp Lô Đi Cùng",
-    "🔮 Soi Khác"
+    "🔮 Soi Khác",
+    "📅 Quét Theo Ngày"
 ])
 
 # ------------------- TAB 1: KQXS Chi Tiết -------------------
 with tab1:
-    # Select day, region, then station
     day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0)
     day_stations = utils.DAY_STATIONS.get(day_selected, [])
     region_options = sorted({region for region, _ in day_stations})
@@ -58,19 +58,18 @@ with tab1:
 with tab2:
     st.markdown('<div class="sub-header">Quét Cầu PASCAL / POSPAIR</div>', unsafe_allow_html=True)
     
-    # Explanation expander
     with st.expander("📖 Giải thích phương pháp & Backtest"):
         st.markdown("""
         **1. POSPAIR (Position Pair):**
         - Chọn 2 vị trí bất kỳ trong bảng kết quả xổ số.
         - Lấy chữ số cuối cùng của mỗi vị trí, ghép lại thành cặp số.
-        - Ví dụ: Vị trí 0 là 123, Vị trí 1 là 456 → Lấy 3 và 6 → Cặp 36, 63.
+        - Ví dụ: Vị trí 0 là 123, Vị trí 1 là 456 - Lấy 3 và 6 - Cặp 36, 63.
         - Bạn có thể chọn chế độ **Tự động** (quét tất cả) hoặc **Thủ công** (chọn vị trí cụ thể).
 
         **2. PASCAL:**
         - Lấy 2 số tại 2 vị trí bất kỳ, ghép lại thành chuỗi số.
         - Cộng dồn theo quy tắc tam giác Pascal (cộng 2 số liền kề, lấy hàng đơn vị) cho đến khi còn 2 số.
-        - Ví dụ: 123 và 456 → 123456 → ... → 89 → Cặp 89, 98.
+        - Ví dụ: 123 và 456 - 123456 - ... - 89 - Cặp 89, 98.
 
         **3. Win Rate (Tỷ lệ thắng):**
         - Là tỷ lệ % số lần cầu này dự đoán đúng trong quá khứ (theo độ sâu quét).
@@ -78,7 +77,6 @@ with tab2:
         - Win Rate cao = cầu có độ tin cậy cao hơn.
         """)
     
-    # Day & region selection for scanning
     day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab2")
     day_stations = utils.DAY_STATIONS.get(day_selected, [])
     region_options = sorted({region for region, _ in day_stations})
@@ -92,7 +90,6 @@ with tab2:
     with col2:
         min_str = st.number_input("Streak (chuỗi) tối thiểu", value=3, min_value=1)
     
-    # Position selection for POSPAIR
     scan_mode = st.radio("Chế độ quét", ["Tự động (Quét tất cả vị trí)", "Thủ công (Chọn vị trí cụ thể)"], horizontal=True)
     
     selected_positions = None
@@ -220,3 +217,46 @@ with tab5:
                             st.dataframe(pd.DataFrame(logs_bn), use_container_width=True)
                     else:
                         st.warning(f"Không tìm thấy dữ liệu lịch sử cho số {target_bn}.")
+
+# ------------------- TAB 6: QUÉT THEO NGÀY -------------------
+with tab6:
+    st.markdown('<div class="sub-header">📅 Quét Tất Cả Đài Theo Ngày</div>', unsafe_allow_html=True)
+    st.caption("Quét tất cả các đài của một ngày trong tuần và tổng hợp theo tần suất xuất hiện.")
+    
+    col_t6_1, col_t6_2 = st.columns(2)
+    with col_t6_1:
+        day_scan = st.selectbox("Chọn ngày quét", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab6")
+    with col_t6_2:
+        limit_scan = st.slider("Số kỳ quét gần nhất", 10, 100, 30, key="limit_tab6")
+    
+    if st.button("🔍 Quét Ngay", type="primary"):
+        my_bar = st.progress(0, text="Đang khởi tạo...")
+        freq_data, detail_logs = utils.scan_day_stations(
+            day_scan,
+            limit=limit_scan,
+            progress_callback=lambda prog, msg: my_bar.progress(prog, text=msg)
+        )
+        my_bar.empty()
+        
+        if freq_data:
+            st.success(f"Hoàn tất! Đã quét {len(utils.get_stations_by_day(day_scan))} đài của {day_scan}.")
+            
+            res_t6_1, res_t6_2 = st.columns([2, 1])
+            with res_t6_1:
+                st.write("**Bảng tần suất xuất hiện (Top 50):**")
+                df_freq = pd.DataFrame(freq_data[:50])
+                st.dataframe(
+                    df_freq.style.background_gradient(cmap="Blues", subset=["Số lần xuất hiện"]),
+                    use_container_width=True,
+                    height=500
+                )
+            with res_t6_2:
+                st.write("**Biểu đồ Top 20:**")
+                df_top20 = pd.DataFrame(freq_data[:20])
+                st.bar_chart(df_top20.set_index("Số")["Số lần xuất hiện"])
+            
+            with st.expander("📋 Xem chi tiết kết quả từng đài"):
+                df_detail = pd.DataFrame(detail_logs)
+                st.dataframe(df_detail, use_container_width=True, height=400)
+        else:
+            st.warning("Không có dữ liệu để hiển thị.")
