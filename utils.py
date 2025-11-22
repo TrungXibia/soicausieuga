@@ -5,7 +5,6 @@ from collections import Counter
 import datetime
 
 # ==== 1. DANH SÁCH API ĐẦY ĐỦ (MB, MN, MT) ====
-# Cấu trúc: "Tên đài": {"url": "...", "region": "MB/MN/MT"}
 ALL_STATIONS = {
     # -- Miền Bắc --
     "Miền Bắc": {"url": "https://www.kqxs88.live/api/front/open/lottery/history/list/game?limitNum=100&gameCode=miba", "region": "MB"},
@@ -91,7 +90,7 @@ def algo_pascal(s_a, s_b):
         arr = nxt
     return (f"{arr[0]}{arr[1]}", f"{arr[1]}{arr[0]}")
 
-def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2):
+def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2, position_pairs=None):
     issues = fetch_data(url)
     if not issues: return []
     issues = issues[:depth][::-1] 
@@ -104,64 +103,70 @@ def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2):
 
     limit_pos = min(len(days[-1]["raw"]), 20) 
     results = []
-    for i in range(limit_pos):
-        for j in range(i+1, limit_pos):
-            hits = []
-            for k in range(len(days)-1):
-                curr_raw = days[k]["raw"]
-                next_los = days[k+1]["los"]
-                val_a = curr_raw[i] if i < len(curr_raw) else ""
-                val_b = curr_raw[j] if j < len(curr_raw) else ""
-                pred_ab, pred_ba = (None, None)
-                if method == "PASCAL":
-                    pred_ab, pred_ba = algo_pascal(val_a, val_b)
-                else: # POSPAIR
-                    digit_a = val_a[-1] if val_a and val_a[-1].isdigit() else None
-                    digit_b = val_b[-1] if val_b and val_b[-1].isdigit() else None
-                    if digit_a and digit_b:
-                        pred_ab, pred_ba = digit_a + digit_b, digit_b + digit_a
-                if pred_ab:
-                    hits.append((pred_ab in next_los) or (pred_ba in next_los))
-                else:
-                    hits.append(False)
-            streak = 0
-            for h in reversed(hits):
-                if h: streak += 1
-                else: break
-            if streak >= min_streak:
-                last_raw = days[-1]["raw"]
-                v_a = last_raw[i] if i < len(last_raw) else ""
-                v_b = last_raw[j] if j < len(last_raw) else ""
-                p_ab, p_ba = (None, None)
-                if method == "PASCAL":
-                    p_ab, p_ba = algo_pascal(v_a, v_b)
-                elif method == "POSPAIR":
-                    da = v_a[-1] if v_a and v_a[-1].isdigit() else ""
-                    db = v_b[-1] if v_b and v_b[-1].isdigit() else ""
-                    if da and db: p_ab, p_ba = da+db, db+da
-                if p_ab:
-                    win_count = sum(hits)
-                    total_runs = len(hits)
-                    win_rate = (win_count / total_runs * 100) if total_runs > 0 else 0
-                    
-                    results.append({
-                        "Vị trí": f"Pos {i} - Pos {j}",
-                        "Kiểu": method,
-                        "Streak": streak,
-                        "Win Rate": f"{win_rate:.1f}% ({win_count}/{total_runs})",
-                        "Dự đoán": f"{p_ab} - {p_ba}"
-                    })
+    
+    # Determine which position pairs to scan
+    if position_pairs:
+        # Use custom position pairs
+        pairs_to_scan = position_pairs
+    else:
+        # Auto mode: scan all combinations
+        pairs_to_scan = [(i, j) for i in range(limit_pos) for j in range(i+1, limit_pos)]
+    
+    for i, j in pairs_to_scan:
+        # Skip if positions are out of range
+        if i >= limit_pos or j >= limit_pos:
+            continue
+            
+        hits = []
+        for k in range(len(days)-1):
+            curr_raw = days[k]["raw"]
+            next_los = days[k+1]["los"]
+            val_a = curr_raw[i] if i < len(curr_raw) else ""
+            val_b = curr_raw[j] if j < len(curr_raw) else ""
+            pred_ab, pred_ba = (None, None)
+            if method == "PASCAL":
+                pred_ab, pred_ba = algo_pascal(val_a, val_b)
+            else: # POSPAIR
+                digit_a = val_a[-1] if val_a and val_a[-1].isdigit() else None
+                digit_b = val_b[-1] if val_b and val_b[-1].isdigit() else None
+                if digit_a and digit_b:
+                    pred_ab, pred_ba = digit_a + digit_b, digit_b + digit_a
+            if pred_ab:
+                hits.append((pred_ab in next_los) or (pred_ba in next_los))
+            else:
+                hits.append(False)
+        streak = 0
+        for h in reversed(hits):
+            if h: streak += 1
+            else: break
+        if streak >= min_streak:
+            last_raw = days[-1]["raw"]
+            v_a = last_raw[i] if i < len(last_raw) else ""
+            v_b = last_raw[j] if j < len(last_raw) else ""
+            p_ab, p_ba = (None, None)
+            if method == "PASCAL":
+                p_ab, p_ba = algo_pascal(v_a, v_b)
+            elif method == "POSPAIR":
+                da = v_a[-1] if v_a and v_a[-1].isdigit() else ""
+                db = v_b[-1] if v_b and v_b[-1].isdigit() else ""
+                if da and db: p_ab, p_ba = da+db, db+da
+            if p_ab:
+                win_count = sum(hits)
+                total_runs = len(hits)
+                win_rate = (win_count / total_runs * 100) if total_runs > 0 else 0
+                
+                results.append({
+                    "Vị trí": f"Pos {i} - Pos {j}",
+                    "Kiểu": method,
+                    "Streak": streak,
+                    "Win Rate": f"{win_rate:.1f}% ({win_count}/{total_runs})",
+                    "Dự đoán": f"{p_ab} - {p_ba}"
+                })
     results.sort(key=lambda x: x["Streak"], reverse=True)
     return results
 
-# ==== 4. LOGIC CẶP LÔ ĐI CÙNG (MỚI) ====
+# ==== 4. LOGIC CẶP LÔ ĐI CÙNG ====
 def scan_cap_lo_di_cung(target, region_filter, mode_count="day", progress_callback=None):
-    """
-    target: Số cần tìm (ví dụ "68")
-    region_filter: "MB", "MN", "MT", "ALL"
-    mode_count: "day" (đếm số ngày trùng) hoặc "hit" (đếm tổng số lần xuất hiện)
-    """
-    # 1. Lọc danh sách URL cần quét
     urls_to_scan = []
     for name, info in ALL_STATIONS.items():
         if region_filter == "ALL" or info["region"] == region_filter:
@@ -172,10 +177,8 @@ def scan_cap_lo_di_cung(target, region_filter, mode_count="day", progress_callba
 
     co_counter = Counter()
     details_log = []
-    
     total_stations = len(urls_to_scan)
     
-    # 2. Quét từng đài
     for idx, (station_name, url) in enumerate(urls_to_scan):
         if progress_callback:
             progress_callback(idx / total_stations, f"Đang quét {station_name}...")
@@ -183,22 +186,16 @@ def scan_cap_lo_di_cung(target, region_filter, mode_count="day", progress_callba
         issues = fetch_data(url)
         for item in issues:
             raw = parse_detail(item.get("detail", "[]"))
-            # Lấy danh sách lô 2 số trong kỳ quay này
             los_raw = [get_last2(x) for x in raw if get_last2(x)]
             
             if target in los_raw:
-                # Tìm thấy target trong kỳ này
-                
-                # Lọc ra các số đi cùng (trừ chính nó)
                 others = [x for x in los_raw if x != target]
                 
                 if mode_count == "day":
-                    # Chế độ 'day': Mỗi số chỉ đếm 1 lần mỗi ngày (dùng set)
                     unique_others = set(others)
                     co_counter.update(unique_others)
                     nums_str = ", ".join(sorted(unique_others))
                 else:
-                    # Chế độ 'hit': Đếm tất cả (bao gồm nháy)
                     co_counter.update(others)
                     nums_str = ", ".join(sorted(others))
                 
@@ -211,16 +208,13 @@ def scan_cap_lo_di_cung(target, region_filter, mode_count="day", progress_callba
     if progress_callback:
         progress_callback(1.0, "Hoàn tất!")
 
-    # 3. Tổng hợp kết quả
     if not details_log:
         return [], []
 
-    # Bảng tần suất
     freq_data = []
     for num, count in co_counter.most_common():
         freq_data.append({"Số đi cùng": num, "Số lần/ngày gặp": count})
         
-    # Sắp xếp log chi tiết theo ngày mới nhất
     try:
         details_log.sort(key=lambda x: datetime.datetime.strptime(x["Ngày"], "%d/%m/%Y"), reverse=True)
     except:
@@ -228,14 +222,12 @@ def scan_cap_lo_di_cung(target, region_filter, mode_count="day", progress_callba
         
     return freq_data, details_log
 
-# ==== 5. CÁC CHỨC NĂNG SOI KHÁC (MỚI) ====
+# ==== 5. CÁC CHỨC NĂNG SOI KHÁC ====
 
 def get_lo_gan(url, limit=100):
-    """Thống kê lô gan (số ngày chưa về)"""
     issues = fetch_data(url)
     if not issues: return []
     
-    # issues là list từ Mới -> Cũ
     issues = issues[:limit]
     gan_stats = {f"{i:02d}": -1 for i in range(100)}
     
@@ -245,26 +237,24 @@ def get_lo_gan(url, limit=100):
         
         for num in range(100):
             s_num = f"{num:02d}"
-            if gan_stats[s_num] == -1: # Chưa thấy
+            if gan_stats[s_num] == -1:
                 if s_num in los:
-                    gan_stats[s_num] = idx # idx chính là số ngày cách đây (0 = hôm nay)
+                    gan_stats[s_num] = idx
                     
     result = []
     for num in range(100):
         s_num = f"{num:02d}"
         days = gan_stats[s_num]
-        if days == -1: days = limit # Chưa về trong limit ngày
+        if days == -1: days = limit
         result.append({"Số": s_num, "Số ngày chưa về": days})
         
     result.sort(key=lambda x: x["Số ngày chưa về"], reverse=True)
     return result
 
 def get_bac_nho_next_day(url, target, limit=100):
-    """Bạc nhớ: Tìm các số hay về ngày hôm sau khi ngày hôm trước có target"""
     issues = fetch_data(url)
     if not issues: return [], []
     
-    # Cần duyệt theo thời gian Cũ -> Mới để xem "hôm sau"
     issues = issues[:limit][::-1]
     
     next_day_counts = Counter()
@@ -359,7 +349,4 @@ DAY_STATIONS = {
 }
 
 def get_stations_by_day(day: str):
-    """Return list of (region, station) tuples for the given day name.
-    If the day is not found, returns an empty list.
-    """
     return DAY_STATIONS.get(day, [])
