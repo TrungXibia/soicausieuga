@@ -1,25 +1,3 @@
-import streamlit as st
-import pandas as pd
-import utils
-from collections import Counter
-
-# Cấu hình trang (Full width)
-st.set_page_config(page_title="Siêu Gà 18+", layout="wide", page_icon="🐔")
-
-# CSS tùy chỉnh cho đẹp
-st.markdown("""
-    <style>
-    .main-header {font-size: 2.5rem; font-weight: 700; color: #FF4B4B;}
-    .sub-header {font-size: 1.5rem; font-weight: 600;}
-    </style>
-""", unsafe_allow_html=True)
-
-st.markdown('<div class="main-header">🐔 Hệ thống Soi Cầu Siêu Gà 18+</div>', unsafe_allow_html=True)
-
-# Tạo Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📊 KQXS Chi Tiết", "🤖 Cầu Tự Động", "📈 Tần Suất", "🔗 Cặp Lô Đi Cùng"])
-
-# --- TAB 1: XEM KẾT QUẢ ---
 with tab1:
     col1, col2 = st.columns([1, 3])
     with col1:
@@ -49,6 +27,23 @@ with tab1:
 # --- TAB 2: CẦU TỰ ĐỘNG ---
 with tab2:
     st.markdown('<div class="sub-header">Quét Cầu PASCAL / POSPAIR</div>', unsafe_allow_html=True)
+    
+    with st.expander("📖 Giải thích phương pháp & Backtest"):
+        st.markdown("""
+        **1. POSPAIR (Position Pair):**
+        - Lấy chữ số cuối cùng của 2 vị trí bất kỳ trong bảng kết quả.
+        - Ghép lại thành cặp số. Ví dụ: Vị trí A là 123, Vị trí B là 456 -> Cặp 36, 63.
+        
+        **2. PASCAL:**
+        - Lấy 2 số tại 2 vị trí, ghép lại thành chuỗi số.
+        - Cộng dồn theo quy tắc tam giác Pascal (cộng 2 số liền kề, lấy hàng đơn vị) cho đến khi còn 2 số.
+        - Ví dụ: 123 và 456 -> 123456 -> ... -> 89 -> Cặp 89, 98.
+        
+        **3. Win Rate (Tỷ lệ thắng):**
+        - Là tỷ lệ số lần cầu này dự đoán đúng trong quá khứ (theo độ sâu quét).
+        - Backtest được thực hiện tự động khi quét, hiển thị qua cột Win Rate.
+        """)
+
     c1, c2, c3 = st.columns(3)
     with c1:
         s_cau = st.selectbox("Đài soi cầu", list(utils.ALL_STATIONS.keys()), index=0)
@@ -151,3 +146,49 @@ with tab4:
                     st.write("**Chi tiết các lần xuất hiện:**")
                     df_logs = pd.DataFrame(logs)
                     st.dataframe(df_logs, use_container_width=True, height=400)
+
+# --- TAB 5: SOI KHÁC (LÔ GAN & BẠC NHỚ) ---
+with tab5:
+    st.markdown('<div class="sub-header">🔮 Soi Lô Gan & Bạc Nhớ (Ngày Mai)</div>', unsafe_allow_html=True)
+    
+    t5_1, t5_2 = st.tabs(["🐢 Lô Gan (Lâu chưa về)", "📅 Bạc Nhớ (Dự đoán ngày mai)"])
+    
+    with t5_1:
+        st.caption("Thống kê các số lâu chưa xuất hiện.")
+        s_gan = st.selectbox("Chọn đài (Lô Gan)", list(utils.ALL_STATIONS.keys()), key="s_gan")
+        limit_gan = st.slider("Xét trong bao nhiêu kỳ gần nhất?", 30, 100, 100, key="limit_gan")
+        
+        if st.button("Quét Lô Gan"):
+            u_gan = utils.ALL_STATIONS[s_gan]["url"]
+            with st.spinner("Đang quét lô gan..."):
+                data_gan = utils.get_lo_gan(u_gan, limit=limit_gan)
+                if data_gan:
+                    st.dataframe(pd.DataFrame(data_gan), use_container_width=True)
+                else:
+                    st.error("Không có dữ liệu.")
+                
+    with t5_2:
+        st.caption("Dựa vào số về hôm nay để dự đoán số về ngày mai (theo lịch sử).")
+        c_bn1, c_bn2 = st.columns(2)
+        with c_bn1:
+            s_bn = st.selectbox("Chọn đài (Bạc Nhớ)", list(utils.ALL_STATIONS.keys()), key="s_bn")
+        with c_bn2:
+            target_bn = st.text_input("Nhập số vừa về (VD: 99)", max_chars=2, key="target_bn")
+            
+        if st.button("Soi Bạc Nhớ"):
+            if not target_bn or not target_bn.isdigit():
+                st.error("Vui lòng nhập số hợp lệ.")
+            else:
+                u_bn = utils.ALL_STATIONS[s_bn]["url"]
+                with st.spinner("Đang phân tích bạc nhớ..."):
+                    freq_bn, logs_bn = utils.get_bac_nho_next_day(u_bn, target_bn)
+                    
+                    if freq_bn:
+                        st.success(f"Khi {target_bn} về, ngày hôm sau thường về các số sau:")
+                        df_bn = pd.DataFrame(freq_bn)
+                        st.dataframe(df_bn.style.background_gradient(cmap="Reds"), use_container_width=True)
+                        
+                        with st.expander("Xem chi tiết lịch sử"):
+                            st.dataframe(pd.DataFrame(logs_bn), use_container_width=True)
+                    else:
+                        st.warning(f"Không tìm thấy dữ liệu lịch sử cho số {target_bn}.")
