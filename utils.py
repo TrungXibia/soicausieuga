@@ -140,10 +140,15 @@ def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2):
                     db = v_b[-1] if v_b and v_b[-1].isdigit() else ""
                     if da and db: p_ab, p_ba = da+db, db+da
                 if p_ab:
+                    win_count = sum(hits)
+                    total_runs = len(hits)
+                    win_rate = (win_count / total_runs * 100) if total_runs > 0 else 0
+                    
                     results.append({
                         "Vị trí": f"Pos {i} - Pos {j}",
                         "Kiểu": method,
                         "Streak": streak,
+                        "Win Rate": f"{win_rate:.1f}% ({win_count}/{total_runs})",
                         "Dự đoán": f"{p_ab} - {p_ba}"
                     })
     results.sort(key=lambda x: x["Streak"], reverse=True)
@@ -222,3 +227,69 @@ def scan_cap_lo_di_cung(target, region_filter, mode_count="day", progress_callba
         pass
         
     return freq_data, details_log
+
+# ==== 5. CÁC CHỨC NĂNG SOI KHÁC (MỚI) ====
+
+def get_lo_gan(url, limit=100):
+    """Thống kê lô gan (số ngày chưa về)"""
+    issues = fetch_data(url)
+    if not issues: return []
+    
+    # issues là list từ Mới -> Cũ
+    issues = issues[:limit]
+    gan_stats = {f"{i:02d}": -1 for i in range(100)}
+    
+    for idx, item in enumerate(issues):
+        raw = parse_detail(item.get("detail", "[]"))
+        los = set([get_last2(s) for s in raw if get_last2(s)])
+        
+        for num in range(100):
+            s_num = f"{num:02d}"
+            if gan_stats[s_num] == -1: # Chưa thấy
+                if s_num in los:
+                    gan_stats[s_num] = idx # idx chính là số ngày cách đây (0 = hôm nay)
+                    
+    result = []
+    for num in range(100):
+        s_num = f"{num:02d}"
+        days = gan_stats[s_num]
+        if days == -1: days = limit # Chưa về trong limit ngày
+        result.append({"Số": s_num, "Số ngày chưa về": days})
+        
+    result.sort(key=lambda x: x["Số ngày chưa về"], reverse=True)
+    return result
+
+def get_bac_nho_next_day(url, target, limit=100):
+    """Bạc nhớ: Tìm các số hay về ngày hôm sau khi ngày hôm trước có target"""
+    issues = fetch_data(url)
+    if not issues: return [], []
+    
+    # Cần duyệt theo thời gian Cũ -> Mới để xem "hôm sau"
+    issues = issues[:limit][::-1]
+    
+    next_day_counts = Counter()
+    log = []
+    
+    for i in range(len(issues) - 1):
+        curr = issues[i]
+        nxt = issues[i+1]
+        
+        curr_raw = parse_detail(curr.get("detail", "[]"))
+        curr_los = set([get_last2(s) for s in curr_raw if get_last2(s)])
+        
+        if target in curr_los:
+            nxt_raw = parse_detail(nxt.get("detail", "[]"))
+            nxt_los = [get_last2(s) for s in nxt_raw if get_last2(s)]
+            
+            next_day_counts.update(nxt_los)
+            log.append({
+                "Ngày xuất hiện": curr.get("turnNum"),
+                "Ngày hôm sau": nxt.get("turnNum"),
+                "Kết quả hôm sau": ", ".join(sorted(set(nxt_los)))
+            })
+            
+    freq = []
+    for num, count in next_day_counts.most_common():
+        freq.append({"Số": num, "Số lần xuất hiện": count})
+        
+    return freq, log
