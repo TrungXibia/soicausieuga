@@ -106,14 +106,11 @@ def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2, position_pairs=
     
     # Determine which position pairs to scan
     if position_pairs:
-        # Use custom position pairs
         pairs_to_scan = position_pairs
     else:
-        # Auto mode: scan all combinations
         pairs_to_scan = [(i, j) for i in range(limit_pos) for j in range(i+1, limit_pos)]
     
     for i, j in pairs_to_scan:
-        # Skip if positions are out of range
         if i >= limit_pos or j >= limit_pos:
             continue
             
@@ -126,7 +123,7 @@ def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2, position_pairs=
             pred_ab, pred_ba = (None, None)
             if method == "PASCAL":
                 pred_ab, pred_ba = algo_pascal(val_a, val_b)
-            else: # POSPAIR
+            else:
                 digit_a = val_a[-1] if val_a and val_a[-1].isdigit() else None
                 digit_b = val_b[-1] if val_b and val_b[-1].isdigit() else None
                 if digit_a and digit_b:
@@ -350,3 +347,65 @@ DAY_STATIONS = {
 
 def get_stations_by_day(day: str):
     return DAY_STATIONS.get(day, [])
+
+# ==== 7. QUÉT TẤT CẢ ĐÀI THEO NGÀY ====
+def scan_day_stations(day, limit=30, progress_callback=None):
+    """Quét tất cả các đài của một ngày trong tuần và tổng hợp theo tần suất xuất hiện"""
+    stations = get_stations_by_day(day)
+    if not stations:
+        return [], []
+    
+    number_counter = Counter()
+    detail_logs = []
+    total_stations = len(stations)
+    total_draws = 0
+    
+    for idx, (region, station_name) in enumerate(stations):
+        if progress_callback:
+            progress_callback(idx / total_stations, f"Đang quét {station_name} ({region})...")
+        
+        url = ALL_STATIONS[station_name]["url"]
+        issues = fetch_data(url)
+        
+        if not issues:
+            continue
+            
+        for item in issues[:limit]:
+            raw = parse_detail(item.get("detail", "[]"))
+            los = [get_last2(x) for x in raw if get_last2(x)]
+            
+            number_counter.update(los)
+            total_draws += 1
+            
+            detail_logs.append({
+                "Ngày": item.get("turnNum"),
+                "Đài": station_name,
+                "Miền": region,
+                "Các số về": ", ".join(sorted(set(los)))
+            })
+    
+    if progress_callback:
+        progress_callback(1.0, "Hoàn tất!")
+    
+    if not number_counter:
+        return [], []
+    
+    freq_data = []
+    for num in range(100):
+        s_num = f"{num:02d}"
+        count = number_counter.get(s_num, 0)
+        percentage = (count / total_draws * 100) if total_draws > 0 else 0
+        freq_data.append({
+            "Số": s_num,
+            "Số lần xuất hiện": count,
+            "Tỷ lệ %": f"{percentage:.2f}%"
+        })
+    
+    freq_data.sort(key=lambda x: x["Số lần xuất hiện"], reverse=True)
+    
+    try:
+        detail_logs.sort(key=lambda x: datetime.datetime.strptime(x["Ngày"], "%d/%m/%Y"), reverse=True)
+    except:
+        pass
+    
+    return freq_data, detail_logs
