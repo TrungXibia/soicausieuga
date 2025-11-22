@@ -54,7 +54,7 @@ ALL_STATIONS = {
 
 def fetch_data(url):
     try:
-        res = requests.get(url, timeout=5) # Timeout ngắn để ko treo
+        res = requests.get(url, timeout=5)
         res.raise_for_status()
         return res.json().get("t", {}).get("issueList", [])
     except:
@@ -297,24 +297,24 @@ def get_bac_nho_next_day(url, target, limit=100):
 # ==== 6. LỊCH QUAY XỔ SỐ THEO NGÀY ====
 DAY_STATIONS = {
     "Chủ nhật": [
-        ("Miền Bắc", "Thái Bình"),
+        ("Miền Bắc", "Miền Bắc"),
         ("Miền Nam", "Đà Lạt"),
         ("Miền Nam", "Kiên Giang"),
         ("Miền Nam", "Tiền Giang"),
-        ("Miền Trung", "Huế"),
+        ("Miền Trung", "Thừa Thiên Huế"),
         ("Miền Trung", "Khánh Hòa"),
         ("Miền Trung", "Kon Tum"),
     ],
     "Thứ 2": [
-        ("Miền Bắc", "Hà Nội"),
+        ("Miền Bắc", "Miền Bắc"),
         ("Miền Nam", "Cà Mau"),
         ("Miền Nam", "Đồng Tháp"),
-        ("Miền Nam", "TP Hồ Chí Minh"),
-        ("Miền Trung", "Huế"),
+        ("Miền Nam", "Hồ Chí Minh"),
+        ("Miền Trung", "Thừa Thiên Huế"),
         ("Miền Trung", "Phú Yên"),
     ],
     "Thứ 3": [
-        ("Miền Bắc", "Quảng Ninh"),
+        ("Miền Bắc", "Miền Bắc"),
         ("Miền Nam", "Bạc Liêu"),
         ("Miền Nam", "Bến Tre"),
         ("Miền Nam", "Vũng Tàu"),
@@ -322,7 +322,7 @@ DAY_STATIONS = {
         ("Miền Trung", "Quảng Nam"),
     ],
     "Thứ 4": [
-        ("Miền Bắc", "Bắc Ninh"),
+        ("Miền Bắc", "Miền Bắc"),
         ("Miền Nam", "Cần Thơ"),
         ("Miền Nam", "Đồng Nai"),
         ("Miền Nam", "Sóc Trăng"),
@@ -330,7 +330,7 @@ DAY_STATIONS = {
         ("Miền Trung", "Khánh Hòa"),
     ],
     "Thứ 5": [
-        ("Miền Bắc", "Hà Nội"),
+        ("Miền Bắc", "Miền Bắc"),
         ("Miền Nam", "An Giang"),
         ("Miền Nam", "Bình Thuận"),
         ("Miền Nam", "Tây Ninh"),
@@ -339,7 +339,7 @@ DAY_STATIONS = {
         ("Miền Trung", "Quảng Trị"),
     ],
     "Thứ 6": [
-        ("Miền Bắc", "Hải Phòng"),
+        ("Miền Bắc", "Miền Bắc"),
         ("Miền Nam", "Bình Dương"),
         ("Miền Nam", "Trà Vinh"),
         ("Miền Nam", "Vĩnh Long"),
@@ -347,11 +347,11 @@ DAY_STATIONS = {
         ("Miền Trung", "Ninh Thuận"),
     ],
     "Thứ 7": [
-        ("Miền Bắc", "Nam Định"),
+        ("Miền Bắc", "Miền Bắc"),
         ("Miền Nam", "Bình Phước"),
         ("Miền Nam", "Hậu Giang"),
         ("Miền Nam", "Long An"),
-        ("Miền Nam", "TP Hồ Chí Minh"),
+        ("Miền Nam", "Hồ Chí Minh"),
         ("Miền Trung", "Đà Nẵng"),
         ("Miền Trung", "Đắk Nông"),
         ("Miền Trung", "Quảng Ngãi"),
