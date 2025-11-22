@@ -62,17 +62,20 @@ with tab2:
     with st.expander("📖 Giải thích phương pháp & Backtest"):
         st.markdown("""
         **1. POSPAIR (Position Pair):**
-        - Lấy chữ số cuối cùng của 2 vị trí bất kỳ trong bảng kết quả.
-        - Ghép lại thành cặp số. Ví dụ: Vị trí A là 123, Vị trí B là 456 -> Cặp 36, 63.
+        - Chọn 2 vị trí bất kỳ trong bảng kết quả xổ số.
+        - Lấy chữ số cuối cùng của mỗi vị trí, ghép lại thành cặp số.
+        - Ví dụ: Vị trí 0 là 123, Vị trí 1 là 456 → Lấy 3 và 6 → Cặp 36, 63.
+        - Bạn có thể chọn chế độ **Tự động** (quét tất cả) hoặc **Thủ công** (chọn vị trí cụ thể).
 
         **2. PASCAL:**
-        - Lấy 2 số tại 2 vị trí, ghép lại thành chuỗi số.
+        - Lấy 2 số tại 2 vị trí bất kỳ, ghép lại thành chuỗi số.
         - Cộng dồn theo quy tắc tam giác Pascal (cộng 2 số liền kề, lấy hàng đơn vị) cho đến khi còn 2 số.
-        - Ví dụ: 123 và 456 -> 123456 -> ... -> 89 -> Cặp 89, 98.
+        - Ví dụ: 123 và 456 → 123456 → ... → 89 → Cặp 89, 98.
 
         **3. Win Rate (Tỷ lệ thắng):**
-        - Là tỷ lệ số lần cầu này dự đoán đúng trong quá khứ (theo độ sâu quét).
+        - Là tỷ lệ % số lần cầu này dự đoán đúng trong quá khứ (theo độ sâu quét).
         - Backtest được thực hiện tự động khi quét, hiển thị qua cột Win Rate.
+        - Win Rate cao = cầu có độ tin cậy cao hơn.
         """)
     
     # Day & region selection for scanning
