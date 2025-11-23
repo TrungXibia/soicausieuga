@@ -123,25 +123,6 @@ with tab2:
                         except:
                             pass
 
-    elif method == "3 CÀNG":
-        st.info("ℹ️ Chế độ 3 Càng sẽ tự động quét các tổ hợp 3 vị trí (A-B-C) từ các giải có độ dài >= 3.")
-    
-    if st.button("🚀 Quét Cầu Ngay"):
-        u = utils.ALL_STATIONS[s_cau]["url"]
-        
-        if method == "3 CÀNG":
-            with st.spinner(f"Đang quét cầu 3 Càng trên đài {s_cau}..."):
-                results = utils.scan_cau_3_cang(u, min_streak=min_str)
-                if results:
-                    st.success(f"Tìm thấy {len(results)} cầu 3 càng!")
-                    st.dataframe(pd.DataFrame(results).style.applymap(lambda x: 'font-weight: bold; color: purple', subset=['Dự đoán']), use_container_width=True)
-                else:
-                    st.warning("Không tìm thấy cầu 3 càng nào thỏa mãn.")
-        else:
-            # POSPAIR / PASCAL
-            if method == "POSPAIR" and not use_last and not use_near_last:
-                st.error("Vui lòng chọn ít nhất một loại vị trí quét.")
-            else:
                 with st.spinner(f"Đang chạy thuật toán {method} trên đài {s_cau}..."):
                     results = utils.scan_cau_dong(
                         u, 
