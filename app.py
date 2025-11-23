@@ -126,7 +126,7 @@ with tab2:
     elif method == "3 CÀNG":
         st.info("ℹ️ Chế độ 3 Càng sẽ tự động quét các tổ hợp 3 vị trí (A-B-C) từ các giải có độ dài >= 3.")
     
-    # Button Logic - Correctly Indented
+    # Button Logic
     if st.button("🚀 Quét Cầu Ngay"):
         u = utils.ALL_STATIONS[s_cau]["url"]
         
@@ -277,13 +277,21 @@ with tab4:
 # ------------------- TAB 5: SOI KHÁC (LÔ GAN & BẠC NHỚ) -------------------
 with tab5:
     st.markdown('<div class="sub-header">🔮 Soi Lô Gan & Bạc Nhớ (Ngày Mai)</div>', unsafe_allow_html=True)
+    
+    # Hierarchical Selection (Same as Tab 2)
+    day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab5")
+    day_stations = utils.DAY_STATIONS.get(day_selected, [])
+    region_options = sorted({region for region, _ in day_stations})
+    selected_region = st.selectbox("Chọn miền", region_options, index=0, key="region_tab5")
+    station_options = [station for region, station in day_stations if region == selected_region]
+    s_cau = st.selectbox("Đài soi cầu", station_options, index=0, key="station_tab5")
+
     t5_1, t5_2 = st.tabs(["🐢 Lô Gan (Lâu chưa về)", "📅 Bạc Nhớ (Dự đoán ngày mai)"])
     with t5_1:
-        st.caption("Thống kê các số lâu chưa xuất hiện.")
-        s_gan = st.selectbox("Chọn đài (Lô Gan)", list(utils.ALL_STATIONS.keys()), key="s_gan")
+        st.caption(f"Thống kê các số lâu chưa xuất hiện tại đài **{s_cau}**.")
         limit_gan = st.slider("Xét trong bao nhiêu kỳ gần nhất?", 30, 100, 100, key="limit_gan")
         if st.button("Quét Lô Gan"):
-            u_gan = utils.ALL_STATIONS[s_gan]["url"]
+            u_gan = utils.ALL_STATIONS[s_cau]["url"]
             with st.spinner("Đang quét lô gan..."):
                 data_gan = utils.get_lo_gan(u_gan, limit=limit_gan)
                 if data_gan:
@@ -291,17 +299,13 @@ with tab5:
                 else:
                     st.error("Không có dữ liệu.")
     with t5_2:
-        st.caption("Dựa vào số về hôm nay để dự đoán số về ngày mai (theo lịch sử).")
-        c_bn1, c_bn2 = st.columns(2)
-        with c_bn1:
-            s_bn = st.selectbox("Chọn đài (Bạc Nhớ)", list(utils.ALL_STATIONS.keys()), key="s_bn")
-        with c_bn2:
-            target_bn = st.text_input("Nhập số vừa về (VD: 99)", max_chars=2, key="target_bn")
+        st.caption(f"Dựa vào số về hôm nay để dự đoán số về ngày mai (theo lịch sử) tại đài **{s_cau}**.")
+        target_bn = st.text_input("Nhập số vừa về (VD: 99)", max_chars=2, key="target_bn")
         if st.button("Soi Bạc Nhớ"):
             if not target_bn or not target_bn.isdigit():
                 st.error("Vui lòng nhập số hợp lệ.")
             else:
-                u_bn = utils.ALL_STATIONS[s_bn]["url"]
+                u_bn = utils.ALL_STATIONS[s_cau]["url"]
                 with st.spinner("Đang phân tích bạc nhớ..."):
                     freq_bn, logs_bn = utils.get_bac_nho_next_day(u_bn, target_bn)
                     if freq_bn:
