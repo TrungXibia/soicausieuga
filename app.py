@@ -64,7 +64,7 @@ with tab2:
         - Chọn 2 vị trí bất kỳ trong bảng kết quả xổ số.
         - Lấy chữ số cuối cùng của mỗi vị trí, ghép lại thành cặp số.
         - Ví dụ: Vị trí 0 là 123, Vị trí 1 là 456 - Lấy 3 và 6 - Cặp 36, 63.
-        - Bạn có thể chọn chế độ **Tự động** (quét tất cả) hoặc **Thủ công** (chọn vị trí cụ thể).
+        - Bạn có thể chọn chế độ **Tự động** (quét tất cả vị trí có sẵn) hoặc **Thủ công** (chọn vị trí cụ thể).
 
         **2. PASCAL:**
         - Lấy 2 số tại 2 vị trí bất kỳ, ghép lại thành chuỗi số.
