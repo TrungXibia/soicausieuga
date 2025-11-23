@@ -123,6 +123,48 @@ with tab2:
                         except:
                             pass
 
+    elif method == "3 CÀNG":
+        st.info("ℹ️ Chế độ 3 Càng sẽ tự động quét các tổ hợp 3 vị trí (A-B-C) từ các giải có độ dài >= 3.")
+    
+    # Button Logic - Correctly Indented
+    if st.button("🚀 Quét Cầu Ngay"):
+        u = utils.ALL_STATIONS[s_cau]["url"]
+        
+        if method == "3 CÀNG":
+            with st.spinner(f"Đang quét cầu 3 Càng trên đài {s_cau}..."):
+                results = utils.scan_cau_3_cang(u, min_streak=min_str)
+                if results:
+                    # Process for Frequency Grouping (3 Càng)
+                    all_preds = [r["Dự đoán"] for r in results if "Dự đoán" in r]
+                    
+                    if all_preds:
+                        pred_counts = Counter(all_preds)
+                        freq_groups = {}
+                        for num, count in pred_counts.items():
+                            if count not in freq_groups: freq_groups[count] = []
+                            freq_groups[count].append(num)
+                        
+                        summary_rows = []
+                        for count in sorted(freq_groups.keys(), reverse=True):
+                            nums = sorted(freq_groups[count])
+                            summary_rows.append({
+                                "Mức (Số cầu báo)": f"{count} cầu",
+                                "Các số dự đoán": ", ".join(nums),
+                                "Số lượng": len(nums)
+                            })
+                        
+                        st.success(f"Tìm thấy {len(results)} cầu 3 càng!")
+                        st.markdown("### 📊 Thống kê Mức Số (3 Càng)")
+                        st.dataframe(pd.DataFrame(summary_rows), use_container_width=True)
+
+                    st.dataframe(pd.DataFrame(results).style.applymap(lambda x: 'font-weight: bold; color: purple', subset=['Dự đoán']), use_container_width=True)
+                else:
+                    st.warning("Không tìm thấy cầu 3 càng nào thỏa mãn.")
+        else:
+            # POSPAIR / PASCAL
+            if method == "POSPAIR" and not use_last and not use_near_last:
+                st.error("Vui lòng chọn ít nhất một loại vị trí quét.")
+            else:
                 with st.spinner(f"Đang chạy thuật toán {method} trên đài {s_cau}..."):
                     results = utils.scan_cau_dong(
                         u, 
