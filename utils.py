@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from collections import Counter
 import datetime
+from itertools import permutations
 
 # ==== 1. DANH SÁCH API ĐẦY ĐỦ (MB, MN, MT) ====
 ALL_STATIONS = {
@@ -78,12 +79,247 @@ def get_last2(s):
         return s[-2:]
     return None
 
+def get_last3(s):
+    s = str(s).strip()
+    if len(s) >= 3 and s.isdigit():
+        return s[-3:]
+    return None
+
 # ==== 3. THUẬT TOÁN CẦU ====
 
 def algo_pascal(s_a, s_b):
     base = (s_a or "") + (s_b or "")
     base = "".join([c for c in base if c.isdigit()])
     if len(base) < 2: return (None, None)
+    arr = [int(ch) for ch in base]
+    while len(arr) > 2:
+        nxt = [(arr[i] + arr[i+1]) % 10 for i in range(len(arr)-1)]
+        arr = nxt
+    return (f"{arr[0]}{arr[1]}", f"{arr[1]}{arr[0]}")
+
+def scan_cau_3_cang(url, depth=30, min_streak=2):
+    issues = fetch_data(url)
+    if not issues: return []
+    issues = issues[:depth][::-1] 
+    days = []
+    for it in issues:
+        raw = parse_detail(it.get("detail", "[]"))
+        # Filter for 3-cang targets: only prizes with len >= 3
+        los = set([get_last3(s) for s in raw if get_last3(s)])
+        days.append({"date": it.get("turnNum"), "raw": raw, "los": los})
+    if len(days) < 2: return []
+
+    # Determine available nodes based on the LAST day's structure
+    # Only pick nodes from prizes with len >= 3 (MB: GĐB-G6, MN/MT: GĐB-G7)
+    last_raw = days[-1]["raw"]
+    nodes = []
+    for idx, val in enumerate(last_raw):
+        if len(val) >= 3:
+            # Default to Last Digit (-1) for 3-cang to save performance
+            nodes.append((idx, -1, f"Pos {idx}"))
+            
+    limit_nodes = len(nodes)
+    results = []
+    
+    # Generate permutations of 3 nodes
+    # P(N, 3)
+    perms = list(permutations(range(limit_nodes), 3))
+    
+    for p in perms:
+        node_a = nodes[p[0]]
+        node_b = nodes[p[1]]
+        node_c = nodes[p[2]]
+        
+        hits = []
+        for k in range(len(days)-1):
+            curr_raw = days[k]["raw"]
+            next_los = days[k+1]["los"]
+            
+            # Helper to get digit
+            def get_digit(n, raw_data):
+                p_idx, c_idx, _ = n
+                val_str = raw_data[p_idx] if p_idx < len(raw_data) else ""
+                if val_str and len(val_str) >= abs(c_idx) and val_str[c_idx].isdigit():
+                    return val_str[c_idx]
+                return None
+
+            da = get_digit(node_a, curr_raw)
+            db = get_digit(node_b, curr_raw)
+            dc = get_digit(node_c, curr_raw)
+            
+            pred_abc = None
+            if da and db and dc:
+                pred_abc = da + db + dc
+            
+            if pred_abc:
+                hits.append(pred_abc in next_los)
+            else:
+                hits.append(False)
+                
+        streak = 0
+        for h in reversed(hits):
+            if h: streak += 1
+            else: break
+            
+        if streak >= min_streak:
+            # Calculate prediction for tomorrow
+            last_raw = days[-1]["raw"]
+            
+            def get_digit_last(n, raw_data):
+                p_idx, c_idx, lbl = n
+                val_str = raw_data[p_idx] if p_idx < len(raw_data) else ""
+                if val_str and len(val_str) >= abs(c_idx) and val_str[c_idx].isdigit():
+                    return val_str[c_idx]
+                return ""
+
+            da = get_digit_last(node_a, last_raw)
+            db = get_digit_last(node_b, last_raw)
+            dc = get_digit_last(node_c, last_raw)
+            
+            p_abc = None
+            if da and db and dc:
+                p_abc = da + db + dc
+            
+            if p_abc:
+                win_count = sum(hits)
+                total_runs = len(hits)
+                win_rate = (win_count / total_runs * 100) if total_runs > 0 else 0
+                
+                results.append({
+                    "Vị trí": f"{node_a[2]} - {node_b[2]} - {node_c[2]}",
+                    "Kiểu": "3 Càng",
+                    "Streak": streak,
+                    "Win Rate": f"{win_rate:.1f}% ({win_count}/{total_runs})",
+                    "Dự đoán": p_abc
+                })
+                
+    results.sort(key=lambda x: x["Streak"], reverse=True)
+    return results
+
+def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2, position_pairs=None, 
+                  use_last=True, use_near_last=False, prediction_type="SONG_THU"):
+    issues = fetch_data(url)
+    if not issues: return []
+    issues = issues[:depth][::-1] 
+    days = []
+    for it in issues:
+        raw = parse_detail(it.get("detail", "[]"))
+        los = set([get_last2(s) for s in raw if get_last2(s)])
+        days.append({"date": it.get("turnNum"), "raw": raw, "los": los})
+    if len(days) < 2: return []
+
+    # Determine available nodes based on the LAST day's structure
+    # Node format: (prize_index, char_index, label)
+    last_raw = days[-1]["raw"]
+    nodes = []
+    for idx, val in enumerate(last_raw):
+        if use_last:
+            nodes.append((idx, -1, f"Pos {idx} (Cuối)"))
+        if use_near_last and len(val) >= 2:
+            nodes.append((idx, -2, f"Pos {idx} (Sát)"))
+            
+    limit_nodes = len(nodes)
+    results = []
+    
+    # Determine pairs to scan
+    pairs_to_scan = []
+    if position_pairs:
+        # Manual mode: assume user meant Last digit of prize i and prize j
+        for (i, j) in position_pairs:
+            node_i = next((k for k, n in enumerate(nodes) if n[0] == i and n[1] == -1), None)
+            node_j = next((k for k, n in enumerate(nodes) if n[0] == j and n[1] == -1), None)
+            if node_i is not None and node_j is not None:
+                pairs_to_scan.append((node_i, node_j))
+    else:
+        # Auto mode: scan all pairs of nodes
+        pairs_to_scan = [(i, j) for i in range(limit_nodes) for j in range(i+1, limit_nodes)]
+    
+    for i, j in pairs_to_scan:
+        node_a = nodes[i]
+        node_b = nodes[j]
+        
+        hits = []
+        for k in range(len(days)-1):
+            curr_raw = days[k]["raw"]
+            next_los = days[k+1]["los"]
+            
+            p_idx_a, c_idx_a, _ = node_a
+            val_a_str = curr_raw[p_idx_a] if p_idx_a < len(curr_raw) else ""
+            digit_a = val_a_str[c_idx_a] if val_a_str and len(val_a_str) >= abs(c_idx_a) and val_a_str[c_idx_a].isdigit() else None
+            
+            p_idx_b, c_idx_b, _ = node_b
+            val_b_str = curr_raw[p_idx_b] if p_idx_b < len(curr_raw) else ""
+            digit_b = val_b_str[c_idx_b] if val_b_str and len(val_b_str) >= abs(c_idx_b) and val_b_str[c_idx_b].isdigit() else None
+            
+            pred_ab, pred_ba = (None, None)
+            
+            if method == "PASCAL":
+                v_a = val_a_str
+                v_b = val_b_str
+                pred_ab, pred_ba = algo_pascal(v_a, v_b)
+            else:
+                if digit_a and digit_b:
+                    pred_ab = digit_a + digit_b
+                    pred_ba = digit_b + digit_a
+            
+            if pred_ab:
+                if prediction_type == "BACH_THU":
+                    hits.append(pred_ab in next_los)
+                else: 
+                    hits.append((pred_ab in next_los) or (pred_ba in next_los))
+            else:
+                hits.append(False)
+                
+        streak = 0
+        for h in reversed(hits):
+            if h: streak += 1
+            else: break
+            
+        if streak >= min_streak:
+            last_raw = days[-1]["raw"]
+            
+            p_idx_a, c_idx_a, lbl_a = node_a
+            val_a_str = last_raw[p_idx_a] if p_idx_a < len(last_raw) else ""
+            digit_a = val_a_str[c_idx_a] if val_a_str and len(val_a_str) >= abs(c_idx_a) and val_a_str[c_idx_a].isdigit() else ""
+            
+            p_idx_b, c_idx_b, lbl_b = node_b
+            val_b_str = last_raw[p_idx_b] if p_idx_b < len(last_raw) else ""
+            digit_b = val_b_str[c_idx_b] if val_b_str and len(val_b_str) >= abs(c_idx_b) and val_b_str[c_idx_b].isdigit() else ""
+            
+            p_ab, p_ba = (None, None)
+            
+            if method == "PASCAL":
+                p_ab, p_ba = algo_pascal(val_a_str, val_b_str)
+            elif method == "POSPAIR":
+                if digit_a and digit_b:
+                    p_ab, p_ba = digit_a + digit_b, digit_b + digit_a
+            
+            if p_ab:
+                win_count = sum(hits)
+                total_runs = len(hits)
+                win_rate = (win_count / total_runs * 100) if total_runs > 0 else 0
+                
+                final_pred = ""
+                if prediction_type == "BACH_THU":
+                    final_pred = p_ab
+                else:
+                    final_pred = f"{p_ab} - {p_ba}"
+                
+                results.append({
+                    "Vị trí": f"{lbl_a} - {lbl_b}",
+                    "Kiểu": method,
+                    "Streak": streak,
+                    "Win Rate": f"{win_rate:.1f}% ({win_count}/{total_runs})",
+                    "Dự đoán": final_pred,
+                    "Raw_Pred": [p_ab] if prediction_type == "BACH_THU" else [p_ab, p_ba]
+                })
+                
+    results.sort(key=lambda x: x["Streak"], reverse=True)
+    return results
+
+# ==== 4. LOGIC CẶP LÔ ĐI CÙNG ====
+def scan_cap_lo_di_cung(target, region_filter, mode_count="day", progress_callback=None):
+    urls_to_scan = []
     for name, info in ALL_STATIONS.items():
         if region_filter == "ALL" or info["region"] == region_filter:
             urls_to_scan.append((name, info["url"]))
@@ -282,49 +518,38 @@ def scan_day_stations(day, limit=30, progress_callback=None):
     for idx, (region, station_name) in enumerate(stations):
         if progress_callback:
             progress_callback(idx / total_stations, f"Đang quét {station_name} ({region})...")
-        
+            
+        if station_name not in ALL_STATIONS:
+            continue
+            
         url = ALL_STATIONS[station_name]["url"]
         issues = fetch_data(url)
         
-        if not issues:
-            continue
-            
-        for item in issues[:limit]:
+        # Limit issues
+        issues = issues[:limit]
+        total_draws += len(issues)
+        
+        for item in issues:
             raw = parse_detail(item.get("detail", "[]"))
             los = [get_last2(x) for x in raw if get_last2(x)]
             
+            # Count numbers
             number_counter.update(los)
-            total_draws += 1
             
+            # Log detail
             detail_logs.append({
                 "Ngày": item.get("turnNum"),
                 "Đài": station_name,
                 "Miền": region,
-                "Các số về": ", ".join(sorted(set(los)))
+                "Kết quả": ", ".join(sorted(set(los)))
             })
-    
+            
     if progress_callback:
         progress_callback(1.0, "Hoàn tất!")
-    
-    if not number_counter:
-        return [], []
-    
+        
+    # Format results
     freq_data = []
-    for num in range(100):
-        s_num = f"{num:02d}"
-        count = number_counter.get(s_num, 0)
-        percentage = (count / total_draws * 100) if total_draws > 0 else 0
-        freq_data.append({
-            "Số": s_num,
-            "Số lần xuất hiện": count,
-            "Tỷ lệ %": f"{percentage:.2f}%"
-        })
-    
-    freq_data.sort(key=lambda x: x["Số lần xuất hiện"], reverse=True)
-    
-    try:
-        detail_logs.sort(key=lambda x: datetime.datetime.strptime(x["Ngày"], "%d/%m/%Y"), reverse=True)
-    except:
-        pass
-    
+    for num, count in number_counter.most_common():
+        freq_data.append({"Số": num, "Số lần xuất hiện": count})
+        
     return freq_data, detail_logs
