@@ -101,7 +101,7 @@ def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2, position_pairs=
         days.append({"date": it.get("turnNum"), "raw": raw, "los": los})
     if len(days) < 2: return []
 
-    limit_pos = min(len(days[-1]["raw"]), 20) 
+    limit_pos = len(days[-1]["raw"])  # Scan all available positions 
     results = []
     
     # Determine which position pairs to scan
