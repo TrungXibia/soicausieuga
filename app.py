@@ -147,9 +147,11 @@ with tab2:
                         summary_rows = []
                         for count in sorted(freq_groups.keys(), reverse=True):
                             nums = sorted(freq_groups[count])
+                            le_2d = [n[-2:] for n in nums]
                             summary_rows.append({
                                 "Mức (Số cầu báo)": f"{count} cầu",
                                 "Các số dự đoán": ", ".join(nums),
+                                "Lê 2D": ", ".join(le_2d),
                                 "Số lượng": len(nums)
                             })
                         
