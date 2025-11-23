@@ -90,7 +90,8 @@ def algo_pascal(s_a, s_b):
         arr = nxt
     return (f"{arr[0]}{arr[1]}", f"{arr[1]}{arr[0]}")
 
-def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2, position_pairs=None):
+def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2, position_pairs=None, 
+                  use_last=True, use_near_last=False, prediction_type="SONG_THU"):
     issues = fetch_data(url)
     if not issues: return []
     issues = issues[:depth][::-1] 
@@ -101,64 +102,112 @@ def scan_cau_dong(url, method="POSPAIR", depth=30, min_streak=2, position_pairs=
         days.append({"date": it.get("turnNum"), "raw": raw, "los": los})
     if len(days) < 2: return []
 
-    limit_pos = len(days[-1]["raw"])  # Scan all available positions 
+    # Determine available nodes based on the LAST day's structure
+    # Node format: (prize_index, char_index, label)
+    last_raw = days[-1]["raw"]
+    nodes = []
+    for idx, val in enumerate(last_raw):
+        if use_last:
+            nodes.append((idx, -1, f"Pos {idx} (Cuối)"))
+        if use_near_last and len(val) >= 2:
+            nodes.append((idx, -2, f"Pos {idx} (Sát)"))
+            
+    limit_nodes = len(nodes)
     results = []
     
-    # Determine which position pairs to scan
+    # Determine pairs to scan
+    pairs_to_scan = []
     if position_pairs:
-        pairs_to_scan = position_pairs
+        # Manual mode: assume user meant Last digit of prize i and prize j
+        for (i, j) in position_pairs:
+            node_i = next((k for k, n in enumerate(nodes) if n[0] == i and n[1] == -1), None)
+            node_j = next((k for k, n in enumerate(nodes) if n[0] == j and n[1] == -1), None)
+            if node_i is not None and node_j is not None:
+                pairs_to_scan.append((node_i, node_j))
     else:
-        pairs_to_scan = [(i, j) for i in range(limit_pos) for j in range(i+1, limit_pos)]
+        # Auto mode: scan all pairs of nodes
+        pairs_to_scan = [(i, j) for i in range(limit_nodes) for j in range(i+1, limit_nodes)]
     
     for i, j in pairs_to_scan:
-        if i >= limit_pos or j >= limit_pos:
-            continue
-            
+        node_a = nodes[i]
+        node_b = nodes[j]
+        
         hits = []
         for k in range(len(days)-1):
             curr_raw = days[k]["raw"]
             next_los = days[k+1]["los"]
-            val_a = curr_raw[i] if i < len(curr_raw) else ""
-            val_b = curr_raw[j] if j < len(curr_raw) else ""
+            
+            p_idx_a, c_idx_a, _ = node_a
+            val_a_str = curr_raw[p_idx_a] if p_idx_a < len(curr_raw) else ""
+            digit_a = val_a_str[c_idx_a] if val_a_str and len(val_a_str) >= abs(c_idx_a) and val_a_str[c_idx_a].isdigit() else None
+            
+            p_idx_b, c_idx_b, _ = node_b
+            val_b_str = curr_raw[p_idx_b] if p_idx_b < len(curr_raw) else ""
+            digit_b = val_b_str[c_idx_b] if val_b_str and len(val_b_str) >= abs(c_idx_b) and val_b_str[c_idx_b].isdigit() else None
+            
             pred_ab, pred_ba = (None, None)
+            
             if method == "PASCAL":
-                pred_ab, pred_ba = algo_pascal(val_a, val_b)
+                v_a = val_a_str
+                v_b = val_b_str
+                pred_ab, pred_ba = algo_pascal(v_a, v_b)
             else:
-                digit_a = val_a[-1] if val_a and val_a[-1].isdigit() else None
-                digit_b = val_b[-1] if val_b and val_b[-1].isdigit() else None
                 if digit_a and digit_b:
-                    pred_ab, pred_ba = digit_a + digit_b, digit_b + digit_a
+                    pred_ab = digit_a + digit_b
+                    pred_ba = digit_b + digit_a
+            
             if pred_ab:
-                hits.append((pred_ab in next_los) or (pred_ba in next_los))
+                if prediction_type == "BACH_THU":
+                    hits.append(pred_ab in next_los)
+                else: 
+                    hits.append((pred_ab in next_los) or (pred_ba in next_los))
             else:
                 hits.append(False)
+                
         streak = 0
         for h in reversed(hits):
             if h: streak += 1
             else: break
+            
         if streak >= min_streak:
             last_raw = days[-1]["raw"]
-            v_a = last_raw[i] if i < len(last_raw) else ""
-            v_b = last_raw[j] if j < len(last_raw) else ""
+            
+            p_idx_a, c_idx_a, lbl_a = node_a
+            val_a_str = last_raw[p_idx_a] if p_idx_a < len(last_raw) else ""
+            digit_a = val_a_str[c_idx_a] if val_a_str and len(val_a_str) >= abs(c_idx_a) and val_a_str[c_idx_a].isdigit() else ""
+            
+            p_idx_b, c_idx_b, lbl_b = node_b
+            val_b_str = last_raw[p_idx_b] if p_idx_b < len(last_raw) else ""
+            digit_b = val_b_str[c_idx_b] if val_b_str and len(val_b_str) >= abs(c_idx_b) and val_b_str[c_idx_b].isdigit() else ""
+            
             p_ab, p_ba = (None, None)
+            
             if method == "PASCAL":
-                p_ab, p_ba = algo_pascal(v_a, v_b)
+                p_ab, p_ba = algo_pascal(val_a_str, val_b_str)
             elif method == "POSPAIR":
-                da = v_a[-1] if v_a and v_a[-1].isdigit() else ""
-                db = v_b[-1] if v_b and v_b[-1].isdigit() else ""
-                if da and db: p_ab, p_ba = da+db, db+da
+                if digit_a and digit_b:
+                    p_ab, p_ba = digit_a + digit_b, digit_b + digit_a
+            
             if p_ab:
                 win_count = sum(hits)
                 total_runs = len(hits)
                 win_rate = (win_count / total_runs * 100) if total_runs > 0 else 0
                 
+                final_pred = ""
+                if prediction_type == "BACH_THU":
+                    final_pred = p_ab
+                else:
+                    final_pred = f"{p_ab} - {p_ba}"
+                
                 results.append({
-                    "Vị trí": f"Pos {i} - Pos {j}",
+                    "Vị trí": f"{lbl_a} - {lbl_b}",
                     "Kiểu": method,
                     "Streak": streak,
                     "Win Rate": f"{win_rate:.1f}% ({win_count}/{total_runs})",
-                    "Dự đoán": f"{p_ab} - {p_ba}"
+                    "Dự đoán": final_pred,
+                    "Raw_Pred": [p_ab] if prediction_type == "BACH_THU" else [p_ab, p_ba]
                 })
+                
     results.sort(key=lambda x: x["Streak"], reverse=True)
     return results
 
