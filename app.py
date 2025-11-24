@@ -1,3 +1,44 @@
+import streamlit as st
+import pandas as pd
+import utils
+from collections import Counter
+from datetime import datetime
+
+# Page configuration
+st.set_page_config(page_title="Siêu Gà 18+", layout="wide", page_icon="🐔")
+
+# Get current day of week
+def get_current_day_index():
+    days_map = {
+        0: "Thứ 2",
+        1: "Thứ 3", 
+        2: "Thứ 4",
+        3: "Thứ 5",
+        4: "Thứ 6",
+        5: "Thứ 7",
+        6: "Chủ nhật"
+    }
+    current_day = datetime.now().weekday()
+    current_day_name = days_map[current_day]
+    day_list = list(utils.DAY_STATIONS.keys())
+    try:
+        return day_list.index(current_day_name)
+    except ValueError:
+        return 0
+
+# Custom CSS for styling
+st.markdown("""
+    <style>
+    .main-header {font-size: 2.5rem; font-weight: 700; color: #FF4B4B;}
+    .sub-header {font-size: 1.5rem; font-weight: 600;}
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="main-header">🐔 Hệ thống Soi Cầu Siêu Gà 18+</div>', unsafe_allow_html=True)
+
+# Create tabs
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📊 KQXS Chi Tiết",
     "🤖 Cầu Tự Động",
     "📈 Tần Suất",
     "🔗 Cặp Lô Đi Cùng",
@@ -7,7 +48,7 @@
 
 # ------------------- TAB 1: KQXS Chi Tiết -------------------
 with tab1:
-    day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0)
+    day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=get_current_day_index())
     day_stations = utils.DAY_STATIONS.get(day_selected, [])
     region_options = sorted({region for region, _ in day_stations})
     selected_region = st.selectbox("Chọn miền", region_options, index=0)
@@ -55,7 +96,7 @@ with tab2:
         - Cộng dồn theo quy tắc tam giác Pascal (cộng 2 số liền kề, lấy hàng đơn vị) cho đến khi còn 2 số.
         """)
     
-    day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab2")
+    day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=get_current_day_index(), key="day_tab2")
     day_stations = utils.DAY_STATIONS.get(day_selected, [])
     region_options = sorted({region for region, _ in day_stations})
     selected_region = st.selectbox("Chọn miền", region_options, index=0, key="region_tab2")
@@ -258,7 +299,7 @@ with tab5:
     st.markdown('<div class="sub-header">🔮 Soi Lô Gan & Bạc Nhớ (Ngày Mai)</div>', unsafe_allow_html=True)
     
     # Hierarchical Selection (Same as Tab 2)
-    day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab5")
+    day_selected = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=get_current_day_index(), key="day_tab5")
     day_stations = utils.DAY_STATIONS.get(day_selected, [])
     region_options = sorted({region for region, _ in day_stations})
     selected_region = st.selectbox("Chọn miền", region_options, index=0, key="region_tab5")
@@ -313,7 +354,7 @@ with tab6:
         region_code = region_map[region_scan]
     
     with col_t6_2:
-        day_scan = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab6")
+        day_scan = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=get_current_day_index(), key="day_tab6")
     
     with col_t6_3:
         min_streak_t6 = st.slider("Streak tối thiểu", 2, 5, 3, key="streak_tab6")
