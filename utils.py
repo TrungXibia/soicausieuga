@@ -720,7 +720,7 @@ def get_stations_by_region_and_day(region, day):
     return filtered_stations
 
 def scan_region_by_day_with_methods(region, day, methods=["POSPAIR", "PASCAL"], 
-                                    min_streak=2, depth=30, progress_callback=None):
+                                    min_streak=2, depth=30, prediction_type="SONG_THU", progress_callback=None):
     """Quét tất cả các đài của một miền trong một ngày với các phương pháp dự đoán
     
     Args:
@@ -729,6 +729,7 @@ def scan_region_by_day_with_methods(region, day, methods=["POSPAIR", "PASCAL"],
         methods: Danh sách các phương pháp ["POSPAIR", "PASCAL"]
         min_streak: Chuỗi tối thiểu
         depth: Số kỳ quét
+        prediction_type: "BACH_THU" hoặc "SONG_THU"
         progress_callback: Hàm callback để cập nhật tiến độ
     
     Returns:
@@ -778,7 +779,7 @@ def scan_region_by_day_with_methods(region, day, methods=["POSPAIR", "PASCAL"],
                     position_pairs=None,  # Auto scan all positions
                     use_last=True,
                     use_near_last=False,
-                    prediction_type="SONG_THU"
+                    prediction_type=prediction_type
                 )
             elif method == "PASCAL":
                 results = scan_cau_dong(
@@ -789,7 +790,7 @@ def scan_region_by_day_with_methods(region, day, methods=["POSPAIR", "PASCAL"],
                     position_pairs=None,
                     use_last=True,
                     use_near_last=False,
-                    prediction_type="SONG_THU"
+                    prediction_type=prediction_type
                 )
             
             # Extract predictions
