@@ -357,7 +357,7 @@ with tab6:
         day_scan = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=get_current_day_index(), key="day_tab6")
     
     with col_t6_3:
-        min_streak_t6 = st.slider("Streak tối thiểu", 2, 5, 3, key="streak_tab6")
+        min_streak_t6 = st.slider("Streak tối thiểu", 2, 3, key="streak_tab6")
     
     # Method selection
     st.write("**Chọn phương pháp quét:**")
@@ -422,3 +422,4 @@ with tab6:
                             st.write(f"  - {method}: {method_info['count']} cầu → {', '.join(method_info['predictions'][:10])}{'...' if len(method_info['predictions']) > 10 else ''}")
             else:
                 st.warning(f"Không tìm thấy cầu nào thỏa mãn điều kiện (streak >= {min_streak_t6}) cho {region_scan} vào {day_scan}.")
+
