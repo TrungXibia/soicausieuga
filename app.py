@@ -319,43 +319,81 @@ with tab5:
 
 # ------------------- TAB 6: QUÉT THEO NGÀY -------------------
 with tab6:
-    st.markdown('<div class="sub-header">📅 Quét Tất Cả Đài Theo Ngày</div>', unsafe_allow_html=True)
-    st.caption("Quét tất cả các đài của một ngày trong tuần và tổng hợp theo tần suất xuất hiện.")
+    st.markdown('<div class="sub-header">📅 Quét Theo Miền & Ngày với Phương Pháp Tự Động</div>', unsafe_allow_html=True)
+    st.caption("Quét tất cả các đài của một miền trong ngày được chọn, áp dụng các phương pháp POSPAIR và PASCAL để tìm cầu.")
     
-    col_t6_1, col_t6_2 = st.columns(2)
+    col_t6_1, col_t6_2, col_t6_3 = st.columns(3)
     with col_t6_1:
-        day_scan = st.selectbox("Chọn ngày quét", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab6")
-    with col_t6_2:
-        limit_scan = st.slider("Số kỳ quét gần nhất", 10, 100, 30, key="limit_tab6")
-    
-    if st.button("🔍 Quét Ngay", type="primary"):
-        my_bar = st.progress(0, text="Đang khởi tạo...")
-        freq_data, detail_logs = utils.scan_day_stations(
-            day_scan,
-            limit=limit_scan,
-            progress_callback=lambda prog, msg: my_bar.progress(prog, text=msg)
+        region_scan = st.selectbox(
+            "Chọn miền", 
+            ["MB (Miền Bắc)", "MN (Miền Nam)", "MT (Miền Trung)", "ALL (Tất cả)"],
+            index=0,
+            key="region_tab6"
         )
-        my_bar.empty()
-        
-        if freq_data:
-            st.success(f"Hoàn tất! Đã quét {len(utils.get_stations_by_day(day_scan))} đài của {day_scan}.")
-            
-            res_t6_1, res_t6_2 = st.columns([2, 1])
-            with res_t6_1:
-                st.write("**Bảng tần suất xuất hiện (Top 50):**")
-                df_freq = pd.DataFrame(freq_data[:50])
-                st.dataframe(
-                    df_freq.style.background_gradient(cmap="Blues", subset=["Số lần xuất hiện"]),
-                    use_container_width=True,
-                    height=500
-                )
-            with res_t6_2:
-                st.write("**Biểu đồ Top 20:**")
-                df_top20 = pd.DataFrame(freq_data[:20])
-                st.bar_chart(df_top20.set_index("Số")["Số lần xuất hiện"])
-            
-            with st.expander("📋 Xem chi tiết kết quả từng đài"):
-                df_detail = pd.DataFrame(detail_logs)
-                st.dataframe(df_detail, use_container_width=True, height=400)
+        region_map = {"MB (Miền Bắc)": "MB", "MN (Miền Nam)": "MN", "MT (Miền Trung)": "MT", "ALL (Tất cả)": "ALL"}
+        region_code = region_map[region_scan]
+    
+    with col_t6_2:
+        day_scan = st.selectbox("Chọn ngày", list(utils.DAY_STATIONS.keys()), index=0, key="day_tab6")
+    
+    with col_t6_3:
+        min_streak_t6 = st.slider("Streak tối thiểu", 2, 5, 3, key="streak_tab6")
+    
+    # Method selection
+    st.write("**Chọn phương pháp quét:**")
+    col_method1, col_method2 = st.columns(2)
+    with col_method1:
+        use_pospair = st.checkbox("POSPAIR (Vị trí ghép)", value=True)
+    with col_method2:
+        use_pascal = st.checkbox("PASCAL (Tam giác Pascal)", value=True)
+    
+    if st.button("🔍 Quét Ngay", type="primary", key="scan_tab6"):
+        if not use_pospair and not use_pascal:
+            st.error("Vui lòng chọn ít nhất một phương pháp!")
         else:
-            st.warning("Không có dữ liệu để hiển thị.")
+            methods = []
+            if use_pospair:
+                methods.append("POSPAIR")
+            if use_pascal:
+                methods.append("PASCAL")
+            
+            my_bar = st.progress(0, text="Đang khởi tạo...")
+            prediction_summary, station_details, total_stats = utils.scan_region_by_day_with_methods(
+                region=region_code,
+                day=day_scan,
+                methods=methods,
+                min_streak=min_streak_t6,
+                depth=30,
+                progress_callback=lambda prog, msg: my_bar.progress(prog, text=msg)
+            )
+            my_bar.empty()
+            
+            if total_stats["total_predictions"] > 0:
+                st.success(f"✅ Hoàn tất! Quét {total_stats['total_stations']} đài, tìm thấy {total_stats['total_predictions']} cầu với {total_stats['unique_numbers']} số duy nhất.")
+                
+                # Display summary by frequency level
+                st.markdown("### 📊 Thống Kê Mức Số (Nhiều Cầu Nhất)")
+                if prediction_summary:
+                    summary_rows = []
+                    for level_count in sorted(prediction_summary.keys(), reverse=True):
+                        info = prediction_summary[level_count]
+                        summary_rows.append({
+                            "Mức": info["level"],
+                            "Các số dự đoán": ", ".join(info["numbers"]),
+                            "Số lượng": info["total_numbers"]
+                        })
+                    
+                    df_summary = pd.DataFrame(summary_rows)
+                    st.dataframe(
+                        df_summary.style.background_gradient(cmap="YlOrRd", subset=["Số lượng"]),
+                        use_container_width=True
+                    )
+                
+                # Display details by station
+                with st.expander("📋 Xem chi tiết từng đài", expanded=False):
+                    for station_info in station_details:
+                        st.write(f"**{station_info['station']}** ({station_info['total_cau']} cầu)")
+                        for method, method_info in station_info['methods'].items():
+                            st.write(f"  - {method}: {method_info['count']} cầu → {', '.join(method_info['predictions'][:10])}{'...' if len(method_info['predictions']) > 10 else ''}")
+            else:
+                st.warning(f"Không tìm thấy cầu nào thỏa mãn điều kiện (streak >= {min_streak_t6}) cho {region_scan} vào {day_scan}.")
