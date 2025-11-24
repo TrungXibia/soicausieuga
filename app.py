@@ -347,6 +347,10 @@ with tab6:
     with col_method2:
         use_pascal = st.checkbox("PASCAL (Tam giác Pascal)", value=True)
     
+    st.write("**Loại cầu:**")
+    pred_type_t6 = st.radio("Chế độ dự đoán", ["Song thủ (AB-BA)", "Bạch thủ (AB)"], key="pred_type_tab6", horizontal=True)
+    pred_code_t6 = "SONG_THU" if "Song" in pred_type_t6 else "BACH_THU"
+    
     if st.button("🔍 Quét Ngay", type="primary", key="scan_tab6"):
         if not use_pospair and not use_pascal:
             st.error("Vui lòng chọn ít nhất một phương pháp!")
@@ -364,6 +368,7 @@ with tab6:
                 methods=methods,
                 min_streak=min_streak_t6,
                 depth=30,
+                prediction_type=pred_code_t6,
                 progress_callback=lambda prog, msg: my_bar.progress(prog, text=msg)
             )
             my_bar.empty()
