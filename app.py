@@ -7,6 +7,8 @@ from datetime import datetime
 # Page configuration
 st.set_page_config(page_title="Siêu Gà 18+", layout="wide", page_icon="🐔")
 
+bg_color = st.sidebar.color_picker("Màu nền", "#f7f9fb")
+
 # Get current day of week
 def get_current_day_index():
     days_map = {
@@ -27,21 +29,49 @@ def get_current_day_index():
         return 0
 
 # Custom CSS for styling
-st.markdown("""
+st.markdown(f"""
     <style>
-    .main-header {font-size: 2.5rem; font-weight: 700; color: #FF4B4B;}
-    .sub-header {font-size: 1.5rem; font-weight: 600;}
+    .stApp {{
+        background: {bg_color} !important;
+        font-family: system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+    }}
+    .block-container {{
+        padding: 2rem 2rem;
+        max-width: 1200px;
+    }}
+    .main-header {{
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #0ea5e9;
+        letter-spacing: 0.2px;
+    }}
+    .sub-header {{
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #334155;
+        margin: 0.25rem 0 0.75rem 0;
+    }}
+    .stButton>button {{
+        background-color: #0ea5e9;
+        color: #ffffff;
+        border: 0;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+    }}
+    .stButton>button:hover {{
+        background-color: #38bdf8;
+        color: #ffffff;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-header">🐔 Hệ thống Soi Cầu Siêu Gà 18+</div>', unsafe_allow_html=True)
 
 # Create tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab5, tab6 = st.tabs([
     "📊 KQXS Chi Tiết",
     "🤖 Cầu Tự Động",
-    "📈 Tần Suất",
-    "🔗 Cặp Lô Đi Cùng",
     "🔮 Soi Khác",
     "📅 Quét Theo Ngày"
 ])
@@ -233,66 +263,6 @@ with tab2:
                     else:
                         st.warning("Không tìm thấy cầu nào thỏa mãn điều kiện.")
 
-# ------------------- TAB 3: Tần Suất -------------------
-with tab3:
-    st.markdown('<div class="sub-header">Kiểm tra tần suất dàn số</div>', unsafe_allow_html=True)
-    user_input = st.text_area("Nhập các số (cách nhau bởi dấu cách hoặc phẩy)", "01 02 03 99")
-    if user_input:
-        nums = []
-        for x in user_input.replace(",", " ").split():
-            if x.strip().isdigit():
-                nums.append(x.strip().zfill(2))
-        if nums:
-            counts = Counter(nums)
-            df_freq = pd.DataFrame(list(counts.items()), columns=["Số", "Số lần xuất hiện"]).sort_values(by="Số lần xuất hiện", ascending=False)
-            c_left, c_right = st.columns(2)
-            with c_left:
-                st.dataframe(df_freq, use_container_width=True)
-            with c_right:
-                st.bar_chart(df_freq.set_index("Số"))
-        else:
-            st.info("Hãy nhập số liệu để bắt đầu đếm.")
-
-# ------------------- TAB 4: Cặp Lô Đi Cùng -------------------
-with tab4:
-    st.markdown('<div class="sub-header">🔗 Phân tích Cặp Lô Đi Cùng</div>', unsafe_allow_html=True)
-    col_inp1, col_inp2, col_inp3 = st.columns(3)
-    with col_inp1:
-        target_lo = st.text_input("Nhập Lô mục tiêu (VD: 68)", max_chars=2)
-    with col_inp2:
-        region_opt = st.selectbox("Khu vực quét", ["MB (Miền Bắc)", "MN (Miền Nam)", "MT (Miền Trung)", "ALL (Tất cả)"])
-        region_map = {"MB (Miền Bắc)": "MB", "MN (Miền Nam)": "MN", "MT (Miền Trung)": "MT", "ALL (Tất cả)": "ALL"}
-        region_code = region_map[region_opt]
-    with col_inp3:
-        mode_opt = st.radio("Chế độ đếm", ["Theo ngày (Không trùng)", "Theo lần xuất hiện (Có trùng)"])
-        mode_code = "day" if "ngày" in mode_opt else "hit"
-    if st.button("🔍 Phân tích ngay", type="primary"):
-        if not target_lo or not target_lo.isdigit() or len(target_lo) != 2:
-            st.error("Vui lòng nhập đúng định dạng 2 chữ số (00-99).")
-        else:
-            my_bar = st.progress(0, text="Đang khởi tạo...")
-            freq_list, logs = utils.scan_cap_lo_di_cung(
-                target_lo,
-                region_code,
-                mode_code,
-                progress_callback=lambda prog, msg: my_bar.progress(prog, text=msg)
-            )
-            my_bar.empty()
-            if freq_list is None:
-                st.error(logs)
-            elif not freq_list:
-                st.warning(f"Không tìm thấy số {target_lo} trong lịch sử 60 kỳ gần nhất của khu vực {region_code}.")
-            else:
-                st.success(f"Hoàn tất! Tìm thấy {target_lo} xuất hiện trong {len(logs)} kỳ quay.")
-                res_c1, res_c2 = st.columns([1, 2])
-                with res_c1:
-                    st.write(f"**Top số hay về cùng {target_lo}:**")
-                    df_freq = pd.DataFrame(freq_list)
-                    st.dataframe(df_freq.style.background_gradient(cmap="Greens", subset=["Số lần/ngày gặp"]), use_container_width=True, height=400)
-                with res_c2:
-                    st.write("**Chi tiết các lần xuất hiện:**")
-                    df_logs = pd.DataFrame(logs)
-                    st.dataframe(df_logs, use_container_width=True, height=400)
 
 # ------------------- TAB 5: SOI KHÁC (LÔ GAN & BẠC NHỚ) -------------------
 with tab5:
